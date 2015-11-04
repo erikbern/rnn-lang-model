@@ -6,25 +6,9 @@ from keras.datasets.data_utils import get_file
 import numpy as np
 import random
 import sys
+import string
 
-'''
-    Example script to generate text from Nietzsche's writings.
-
-    At least 20 epochs are required before the generated text
-    starts sounding coherent.
-
-    It is recommended to run this script on GPU, as recurrent
-    networks are quite computationally intensive.
-
-    If you try this script on new data, make sure your corpus
-    has at least ~100k characters. ~1M is better.
-'''
-
-path = get_file('nietzsche.txt', origin="https://s3.amazonaws.com/text-datasets/nietzsche.txt")
-text = open(path).read().lower()
-print('corpus length:', len(text))
-
-chars = set(text)
+chars = string.letters + string.digits + ' .,-^'
 print('total chars:', len(chars))
 char_indices = dict((c, i) for i, c in enumerate(chars))
 indices_char = dict((i, c) for i, c in enumerate(chars))
@@ -33,14 +17,32 @@ indices_char = dict((i, c) for i, c in enumerate(chars))
 maxlen = 20
 step = 7
 
-width = (len(text) - maxlen) // step
-X = np.zeros((width, maxlen, len(chars)), dtype=np.bool)
-Y = np.zeros((width, maxlen, len(chars)), dtype=np.bool)
+def read_data(n=2000):
+    path = sys.argv[1]
+    lines = []
+    for line in open(path):
+        if line == '\n': continue
+        heapq.heappush(lines, (random.random(), line))
+        if len(lines) > n:
+            heapq.heappop(lines)
 
-for j in xrange(width):
-    for t in xrange(maxlen):
-        X[j, t, char_indices[text[step*j+t]]] = 1
-        Y[j, t, char_indices[text[step*j+t+1]]] = 1
+    prefix = '^'
+    text = ''.join([prefix + line.strip() for _, line in lines])
+    all = string.maketrans('', '')
+    rem = all.translate(all, chars)
+    text = text.translate(None, rem)
+    print('corpus length:', len(text))
+
+    width = (len(text) - maxlen) // step
+    X = np.zeros((width, maxlen, len(chars)), dtype=np.bool)
+    Y = np.zeros((width, maxlen, len(chars)), dtype=np.bool)
+
+    for j in xrange(width):
+        for t in xrange(maxlen):
+            X[j, t, char_indices[text[step*j+t]]] = 1
+            Y[j, t, char_indices[text[step*j+t+1]]] = 1
+
+    return X, Y
 
 # build the model: 2 stacked LSTM
 print('Build model...')
@@ -63,18 +65,11 @@ def sample(a, temperature=1.0):
 
 # train the model, output generated text after each iteration
 for iteration in range(1, 60):
-    print()
-    print('-' * 50)
-    print('Iteration', iteration)
-    model.fit(X, Y, batch_size=128, nb_epoch=1)
-
-    start_index = random.randint(0, len(text) - maxlen - 1)
-
     for diversity in [0.2, 0.5, 1.0, 1.2]:
         print()
         print('----- diversity:', diversity)
 
-        sentence = text[start_index: start_index + maxlen]
+        sentence = '^'
         print('----- Generating with seed: "' + sentence + '"')
         sys.stdout.write(sentence)
 
@@ -94,3 +89,9 @@ for iteration in range(1, 60):
             sys.stdout.write(next_char)
             sys.stdout.flush()
         print()
+
+    print('Iteration', iteration)
+    X, Y = read_data()
+    model.fit(X, Y, batch_size=128, nb_epoch=1)
+    model.save_weights('model', overwrite=True)
+
