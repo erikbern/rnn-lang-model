@@ -7,6 +7,7 @@ import numpy as np
 import random
 import sys
 import string
+import heapq
 
 chars = string.letters + string.digits + ' .,-^'
 print('total chars:', len(chars))
@@ -14,10 +15,10 @@ char_indices = dict((c, i) for i, c in enumerate(chars))
 indices_char = dict((i, c) for i, c in enumerate(chars))
 
 # cut the text in semi-redundant sequences of maxlen characters
-maxlen = 20
-step = 7
+maxlen = 40
+step = 31
 
-def read_data(n=2000):
+def read_data(n=20000):
     path = sys.argv[1]
     lines = []
     for line in open(path):
@@ -64,7 +65,8 @@ def sample(a, temperature=1.0):
     return np.argmax(np.random.multinomial(1, a, 1))
 
 # train the model, output generated text after each iteration
-for iteration in range(1, 60):
+for iteration in range(1, 500):
+    print('Iteration', iteration)
     for diversity in [0.2, 0.5, 1.0, 1.2]:
         print()
         print('----- diversity:', diversity)
@@ -73,7 +75,7 @@ for iteration in range(1, 60):
         print('----- Generating with seed: "' + sentence + '"')
         sys.stdout.write(sentence)
 
-        for iteration in range(400):
+        for iteration in range(200):
             x = np.zeros((1, len(sentence), len(chars)))
             for t, char in enumerate(sentence):
                 x[0, t, char_indices[char]] = 1.
@@ -90,7 +92,6 @@ for iteration in range(1, 60):
             sys.stdout.flush()
         print()
 
-    print('Iteration', iteration)
     X, Y = read_data()
     model.fit(X, Y, batch_size=128, nb_epoch=1)
     model.save_weights('model', overwrite=True)
