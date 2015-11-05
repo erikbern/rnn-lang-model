@@ -57,6 +57,8 @@ model.add(Activation('softmax'))
 
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
+if os.path.exists('model.weigths'):
+    model.load_weights('model.weights')
 
 def sample(a, temperature=1.0):
     # helper function to sample an index from a probability array
@@ -94,5 +96,5 @@ for iteration in range(1, 500):
 
     X, Y = read_data()
     model.fit(X, Y, batch_size=128, nb_epoch=1)
-    model.save_weights('model', overwrite=True)
+    model.save_weights('model.weights', overwrite=True)
 
