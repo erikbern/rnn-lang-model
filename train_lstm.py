@@ -8,6 +8,7 @@ import random
 import sys
 import string
 import heapq
+import os
 
 chars = string.letters + string.digits + ' .,-^'
 print('total chars:', len(chars))
@@ -57,7 +58,8 @@ model.add(Activation('softmax'))
 
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
-if os.path.exists('model.weigths'):
+if os.path.exists('model.weights'):
+    print('Loading existing weights')
     model.load_weights('model.weights')
 
 def sample(a, temperature=1.0):
